@@ -1,5 +1,5 @@
 // MENU DE JOGOS
-bot.onText(/💳 Comprar Recargas/, async (msg) => {
+bot.onText(/💳 Comprar GG/, async (msg) => {
   bot.sendMessage(msg.chat.id, '🎮 Escolha o jogo:', {
     reply_markup: {
       keyboard: [
@@ -12,32 +12,86 @@ bot.onText(/💳 Comprar Recargas/, async (msg) => {
   });
 });
 
-// ESCOLHER JOGO
+// FLUXO DE COMPRA
 bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text;
 
   const user = await Usuario.findOne({ chatId });
 
+  if (!user) return;
+
+  // ESCOLHA DO JOGO
   if (text === '🔥 Free Fire') {
-    user.etapa = 'ff';
+    user.etapa = 'ff_id';
     await user.save();
 
-    return bot.sendMessage(chatId, '💎 100 Diamantes = R$5\nConfirmar compra? (sim)');
+    return bot.sendMessage(chatId, 'Digite seu ID do Free Fire:');
   }
 
   if (text === '🟦 Roblox') {
-    user.etapa = 'roblox';
+    user.etapa = 'rb_id';
     await user.save();
 
-    return bot.sendMessage(chatId, '🟦 80 Robux = R$10\nConfirmar compra? (sim)');
+    return bot.sendMessage(chatId, 'Digite seu ID/Username do Roblox:');
   }
 
   if (text === '⚔️ Mobile Legends') {
-    user.etapa = 'ml';
+    user.etapa = 'ml_id';
     await user.save();
 
-    return bot.sendMessage(chatId, '💎 86 Diamantes = R$6\nConfirmar compra? (sim)');
+    return bot.sendMessage(chatId, 'Digite seu ID do Mobile Legends:');
+  }
+
+  // RECEBER ID
+  if (user.etapa === 'ff_id' || user.etapa === 'rb_id' || user.etapa === 'ml_id') {
+
+    user.player_id = text;
+
+    if (user.etapa === 'ff_id') {
+      user.etapa = 'ff_confirm';
+      await user.save();
+
+      return bot.sendMessage(chatId, `
+💎 Free Fire
+
+ID: ${text}
+Pacote: 100 Diamantes
+Valor: R$5
+
+Confirmar compra? (sim)
+      `);
+    }
+
+    if (user.etapa === 'rb_id') {
+      user.etapa = 'rb_confirm';
+      await user.save();
+
+      return bot.sendMessage(chatId, `
+🟦 Roblox
+
+Usuário: ${text}
+Pacote: 80 Robux
+Valor: R$10
+
+Confirmar compra? (sim)
+      `);
+    }
+
+    if (user.etapa === 'ml_id') {
+      user.etapa = 'ml_confirm';
+      await user.save();
+
+      return bot.sendMessage(chatId, `
+⚔️ Mobile Legends
+
+ID: ${text}
+Pacote: 86 Diamantes
+Valor: R$6
+
+Confirmar compra? (sim)
+      `);
+    }
   }
 
   // CONFIRMAR COMPRA
@@ -46,17 +100,17 @@ bot.on('message', async (msg) => {
     let preco = 0;
     let jogo = '';
 
-    if (user.etapa === 'ff') {
+    if (user.etapa === 'ff_confirm') {
       preco = 5;
       jogo = 'Free Fire';
     }
 
-    if (user.etapa === 'roblox') {
+    if (user.etapa === 'rb_confirm') {
       preco = 10;
       jogo = 'Roblox';
     }
 
-    if (user.etapa === 'ml') {
+    if (user.etapa === 'ml_confirm') {
       preco = 6;
       jogo = 'Mobile Legends';
     }
@@ -75,9 +129,10 @@ bot.on('message', async (msg) => {
 🎉 Compra realizada!
 
 🎮 Jogo: ${jogo}
+👤 ID: ${user.player_id}
 💰 Valor: R$ ${preco}
 
-⚡ Sua recarga será enviada em breve!
+⚡ Enviando recarga...
     `);
   }
 });
