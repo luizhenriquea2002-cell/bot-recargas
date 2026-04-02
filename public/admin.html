@@ -1,1 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Painel Admin</title>
+<style>
+body { font-family: Arial; background:#111; color:#fff; }
+.card { background:#222; padding:15px; margin:10px; border-radius:10px; }
+button { background:green; color:#fff; border:none; padding:10px; cursor:pointer; }
+</style>
+</head>
+<body>
 
+<h1>📊 Painel de Pedidos</h1>
+<div id="pedidos"></div>
+
+<script>
+async function carregar() {
+  const res = await fetch('/pedidos');
+  const data = await res.json();
+
+  const div = document.getElementById('pedidos');
+  div.innerHTML = '';
+
+  data.forEach(p => {
+    div.innerHTML += `
+      <div class="card">
+        🎮 ${p.jogo} <br>
+        👤 ${p.player_id} <br>
+        💰 R$${p.valor} <br>
+        📌 ${p.status} <br><br>
+        <button onclick="confirmar('${p._id}')">Confirmar</button>
+      </div>
+    `;
+  });
+}
+
+async function confirmar(id) {
+  await fetch('/confirmar/' + id, { method: 'POST' });
+  carregar();
+}
+
+carregar();
+</script>
+
+</body>
+</html>
