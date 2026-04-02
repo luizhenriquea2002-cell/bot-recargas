@@ -85,3 +85,6 @@ app.post('/confirmar/:id', async (req, res) => {
 app.listen(process.env.PORT || 3000, () => {
   console.log('Servidor rodando');
 });
+app.get('/', (req, res) => {
+  res.redirect('/admin.html');
+});
