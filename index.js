@@ -1,90 +1,83 @@
-require('dotenv').config();
-
-const express = require('express');
-const mongoose = require('mongoose');
-const TelegramBot = require('node-telegram-bot-api');
-
-const app = express();
-app.use(express.json());
-app.use(express.static('public'));
-
-const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
-
-// 🔗 CONEXÃO MONGODB
-mongoose.connect(process.env.MONGO_URL)
-.then(() => console.log('Mongo conectado'))
-.catch(err => console.log(err));
-
-// 📦 MODEL
-const Pedido = mongoose.model('Pedido', {
-  chatId: Number,
-  jogo: String,
-  player_id: String,
-  valor: Number,
-  status: String
-});
-
-// MENU
-bot.onText(/\/start/, (msg) => {
-  bot.sendMessage(msg.chat.id, '🎮 LZ7 RECARGAS', {
+// MENU DE JOGOS
+bot.onText(/💳 Comprar Recargas/, async (msg) => {
+  bot.sendMessage(msg.chat.id, '🎮 Escolha o jogo:', {
     reply_markup: {
       keyboard: [
         ['🔥 Free Fire', '🟦 Roblox'],
-        ['⚔️ Mobile Legends']
+        ['⚔️ Mobile Legends'],
+        ['⬅️ Voltar']
       ],
       resize_keyboard: true
     }
   });
 });
 
-// FLUXO
+// ESCOLHER JOGO
 bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text;
 
-  if (text === '/start') return;
+  const user = await Usuario.findOne({ chatId });
 
   if (text === '🔥 Free Fire') {
-    return bot.sendMessage(chatId, '💎 100 diamantes - R$5\nDigite seu ID:');
+    user.etapa = 'ff';
+    await user.save();
+
+    return bot.sendMessage(chatId, '💎 100 Diamantes = R$5\nConfirmar compra? (sim)');
   }
 
-  // salvar pedido
-  if (!text.includes('Free Fire') && !text.includes('Roblox')) {
+  if (text === '🟦 Roblox') {
+    user.etapa = 'roblox';
+    await user.save();
 
-    const pedido = await Pedido.create({
-      chatId,
-      jogo: 'Free Fire',
-      player_id: text,
-      valor: 5,
-      status: 'pendente'
-    });
-
-    bot.sendMessage(chatId, '💳 Envie o Pix e aguarde confirmação.');
+    return bot.sendMessage(chatId, '🟦 80 Robux = R$10\nConfirmar compra? (sim)');
   }
-});
 
-// 📊 API ADMIN
-app.get('/pedidos', async (req, res) => {
-  const pedidos = await Pedido.find().sort({ _id: -1 });
-  res.json(pedidos);
-});
+  if (text === '⚔️ Mobile Legends') {
+    user.etapa = 'ml';
+    await user.save();
 
-// ✅ CONFIRMAR
-app.post('/confirmar/:id', async (req, res) => {
-  const pedido = await Pedido.findById(req.params.id);
+    return bot.sendMessage(chatId, '💎 86 Diamantes = R$6\nConfirmar compra? (sim)');
+  }
 
-  pedido.status = 'pago';
-  await pedido.save();
+  // CONFIRMAR COMPRA
+  if (text.toLowerCase() === 'sim') {
 
-  bot.sendMessage(pedido.chatId, '✅ Pagamento confirmado!');
-  bot.sendMessage(pedido.chatId, '🎉 Recarga enviada!');
+    let preco = 0;
+    let jogo = '';
 
-  res.send('OK');
-});
+    if (user.etapa === 'ff') {
+      preco = 5;
+      jogo = 'Free Fire';
+    }
 
-app.listen(process.env.PORT || 3000, () => {
-  console.log('Servidor rodando');
-});
-app.get('/', (req, res) => {
-  res.redirect('/admin.html');
+    if (user.etapa === 'roblox') {
+      preco = 10;
+      jogo = 'Roblox';
+    }
+
+    if (user.etapa === 'ml') {
+      preco = 6;
+      jogo = 'Mobile Legends';
+    }
+
+    if (!preco) return;
+
+    if (user.saldo < preco) {
+      return bot.sendMessage(chatId, '❌ Saldo insuficiente');
+    }
+
+    user.saldo -= preco;
+    user.etapa = null;
+    await user.save();
+
+    bot.sendMessage(chatId, `
+🎉 Compra realizada!
+
+🎮 Jogo: ${jogo}
+💰 Valor: R$ ${preco}
+
+⚡ Sua recarga será enviada em breve!
+    `);
+  }
 });
